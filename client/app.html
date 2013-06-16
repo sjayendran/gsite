@@ -1,13 +1,220 @@
 <head>
 	<title>Groovit</title>
 	<link rel="stylesheet" type="text/css" href="shareBrowser.css">
-	<script type="text/javascript" src="youtubePlayer.js"></script>
-	<!--<script type="text/javascript">		
-		function playVideo() {
-			var yt = document.getElementById("sharePlayer");
-			yt.playVideo();            
+	<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" />
+	<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+	<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js"></script>
+	<script src="http://www.youtube.com/player_api"></script>
+	<script type="text/javascript">		
+				/*
+		* Chromeless player has no controls.
+		*/
+
+		var ytplayer;
+		Session.set("interfaceLoaded",false);
+
+		// This function is automatically called by the player once it loads
+		/*WORKING NORMAL JS STUFF function onYouTubePlayerReady(playerId) {
+			ytplayer = document.getElementById("sharePlayer");
+			// This causes the updatePlayerInfo function to be called every 250ms to
+			// get fresh data from the player
+			setInterval(updatePlayerInfo, 250);
+			updatePlayerInfo();
+			ytplayer.addEventListener("onStateChange", "onPlayerStateChange");
+			ytplayer.addEventListener("onError", "onPlayerError");
+			console.log("PLAYER IS READY!");
+			//Load an initial video into the player
+			//ytplayer.cueVideoById("ylLzyHk54Z0");
 		}
-	</script>-->
+		*/
+
+		function onYouTubePlayerReady() {
+	        ytplayer = document.getElementById("sharePlayer");
+	        ytplayer.addEventListener("onStateChange", "onPlayerStateChange");
+	        ytplayer.addEventListener("onReady", "onPlayerReady"); 
+	        ytplayer.addEventListener("onError", "onPlayerError"); 
+	        setInterval(updatePlayerInfo, 250);
+	        var progContainer = document.getElementById('progContainer');
+		    var progBar = document.getElementById('progBar');
+		  
+		    progContainer.addEventListener('click', function(e) {
+		      console.log("clickedinside prog container at X"+e.offsetX);
+		      console.log("clickedinside prog container at Y "+e.offsetY);
+		      progBar.style.width = e.offsetX + "px";
+
+		      var selectedPosition = (e.offsetX / progContainer.scrollWidth);
+
+		      var selectedTime = selectedPosition * ytplayer.getDuration();
+
+		      ytplayer.seekTo(selectedTime, true)
+		    }, false);
+
+		    ytplayer.loadVideoById(Session.get("chosenLinkID"),0,"large");
+
+			var currentScrollOffset = $("#personalVidList").scrollTop();
+			$("#personalVidList").animate({ scrollTop: $(".thumbnail.shareBrowserItem.selected").offset().top - 90 + currentScrollOffset}, 500);
+			console.log("interface is now loaded!!!!");
+			console.log(Session.get("interfaceLoaded"));
+	    }
+		//ytplayer.addEventListener("onReady", "onYouTubePlayerReady");
+		
+		// autoplay video
+	    function onPlayerReady(event) {
+	        event.target.playVideo();
+	    }
+
+		// This function is called when an error is thrown by the player
+		function onPlayerError(errorCode) {
+			console.log('ERROR CODE IS: '+errorCode);
+			if(Session.get("lastAction") == "next") // continue in the next direction if bad video found
+			{
+				var nextBtn = document.getElementById("nextButton");
+		        nextBtn.click();
+	    	}
+	    	else if(Session.get("lastAction") == "prev") // continue in the previous direction if bad video found
+	    	{
+	    		var prevBtn = document.getElementById("previousButton");
+		        prevBtn.click();
+	    	}
+		}
+
+		function onPlayerStateChange(event) {        
+	        if(event === 0) {            
+	            //video finished playing, so move to next video
+	            console.log("VID DONE!");
+	            var nextBtn = document.getElementById("nextButton");
+	            nextBtn.click();
+	        }
+	    }
+
+	    // Display information about the current state of the player
+		function updatePlayerInfo() {
+		  // Also check that at least one function exists since when IE unloads the
+		  // page, it will destroy the SWF before clearing the interval.
+			//var progressBar = document.getElementById("progressBar");
+			var ytplayer = document.getElementById("sharePlayer");
+			//var inside = document.getElementById('progInside');
+			var progBar = document.getElementById('progBar');
+			if(ytplayer)
+			{
+				try
+				{
+					if(ytplayer.getPlayerState() == 1)
+					{
+						var currentProgress = (ytplayer.getCurrentTime() / ytplayer.getDuration()) * 100;
+						//progressBar.setAttribute("style","width:"+currentProgress + "%");
+						//inside.style.width = currentProgress + "%";
+						progBar.style.width = currentProgress + "%";
+						//progressBar.width == currentProgress + "%";
+
+						//console.log("ABSOLUTE VALUE OF CURRENT PROGRESS IS: "+abs(currentProgress));
+						if(currentProgress == 100)
+						{
+							clearInterval(this);
+						}
+						else if(currentProgress < 1)
+						{
+							var currentScrollOffset = $("#personalVidList").scrollTop();
+							$("#personalVidList").animate({ scrollTop: $(".thumbnail.shareBrowserItem.selected").offset().top - 140 + currentScrollOffset}, 500);
+						}
+					}
+				}
+				catch(err)
+				{
+					if(err == "TypeError: Object #<HTMLObjectElement> has no method 'getPlayerState'")
+					{
+						//do nothing
+					}
+				}
+			}
+		}
+		/*
+
+		// Update a particular HTML element with a new value
+		function updateHTML(elmId, value) {
+			document.getElementById(elmId).innerHTML = value;
+		}
+
+		// This function is called when the player changes state
+		function onPlayerStateChange(newState) {
+			if
+			updateHTML("playerState", newState);
+		}
+
+		// Display information about the current state of the player
+		function updatePlayerInfo() {
+			ytplayer = document.getElementById("sharePlayer");
+			// Also check that at least one function exists since when IE unloads the
+			// page, it will destroy the SWF before clearing the interval.
+			if(ytplayer && ytplayer.getDuration) {
+			  updateHTML("videoDuration", ytplayer.getDuration());
+			  updateHTML("videoCurrentTime", ytplayer.getCurrentTime());
+			  updateHTML("bytesTotal", ytplayer.getVideoBytesTotal());
+			  updateHTML("startBytes", ytplayer.getVideoStartBytes());
+			  updateHTML("bytesLoaded", ytplayer.getVideoBytesLoaded());
+			  updateHTML("volume", ytplayer.getVolume());
+			}
+		}
+	
+		Allow the user to set the volume from 0-100
+		function setVideoVolume() {
+			var volume = parseInt(document.getElementById("volumeSetting").value);
+			ytplayer = document.getElementById("sharePlayer");
+			if(isNaN(volume) || volume < 0 || volume > 100) {
+			  alert("Please enter a valid volume between 0 and 100.");
+			}
+			else if(ytplayer){
+			  ytplayer.setVolume(volume);
+			}
+		}
+		*/
+
+		function playVideo() {
+			ytplayer = document.getElementById("sharePlayer");
+			if (ytplayer) {
+			  ytplayer.playVideo();
+			}
+		}
+
+		function pauseVideo() {
+			ytplayer = document.getElementById("sharePlayer");
+			if (ytplayer) {
+			  ytplayer.pauseVideo();
+			}
+		}
+
+		function muteVideo() {
+			ytplayer = document.getElementById("sharePlayer");
+			if(ytplayer) {
+			  ytplayer.mute();
+			}
+		}
+
+		function unMuteVideo() {
+			ytplayer = document.getElementById("sharePlayer");
+			if(ytplayer) {
+			  ytplayer.unMute();
+			}
+		}
+
+		/*
+		// The "main method" of this sample. Called when someone clicks "Run".
+		function loadPlayer() {
+		// Lets Flash from another domain call JavaScript
+		var params = { allowScriptAccess: "always" };
+		// The element id of the Flash embed
+		var atts = { id: "sharePlayer" };
+		// All of the magic handled by SWFObject (http://code.google.com/p/swfobject/)
+		//swfobject.embedSWF("http://www.youtube.com/apiplayer?" +
+						  // "version=3&enablejsapi=1&playerapiid=player1", 
+						  // "videoDiv", "480", "295", "9", null, null, params, atts);
+		}
+		function _run() {
+		loadPlayer();
+		}
+		google.setOnLoadCallback(_run);*/
+
+	</script>
 </head>
 
 <body>
@@ -16,16 +223,24 @@
 </body>
 
 <template name="bodyContent">
-	<div class="container">
+	<div class="container-fluid">
 	{{#if currentUser}}
-		{{#if fbImportDone}}
-			<div id="currentShare" style="float:left;">
-				{{> chosenShare}}
+		    <div id="bodyContainer" class="row-fluid" style="visibility:{{displayBody}};"> 
+		    	<span class="span12">
+					<div id="currentShare" class="span6">
+						<object type="application/x-shockwave-flash" id="sharePlayer" data="http://www.youtube.com/v/CQ5KmztC6Gc?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1&showinfo=0&controls=0&iv_load_policy=3" width="640" height="385"><param name="allowScriptAccess" value="always"/></object>
+						{{> chosenShare}}
+					</div>
+					<div id="personalList" class="span4">
+						{{> shareList}}
+					</div>
+				</span>
 			</div>
-			<div id="personalList" style="float:right;">
-				{{> shareList}}
+			<div id="loader" style="display:{{displayLoader}};">
+				<center>
+					<img src="loader.gif"></img>
+				</center>
 			</div>
-		{{/if}}
 	{{else}}
 		{{> bodyNotLoggedIn}}
 	{{/if}}	
@@ -42,76 +257,132 @@
 </template>-->
 
 <template name="shareList">
-  <ul class="horizontal-slide">
-  <center>
-	  {{#each share}}
-			{{> shareBrowserItem}}
-	  {{/each}}
-  </center>
-  </ul>
-  <a class="reviewHiddenVids" href="#">review hidden links</a>
+  <div class="tabbable">
+	  <ul class="nav nav-tabs">
+		  <li class="active">
+		    <a href="#personalVidList" data-toggle="tab">my groovs</a>
+		  </li>
+		  <li><a href="#tastemakers" data-toggle="tab">tastemakers</a></li>
+		  <li><a href="#globalfeed" data-toggle="tab">global</a></li>
+	  </ul>	
+	  <div class="tab-content">
+		  <ul id="personalVidList" class="horizontal-slide tab-pane active">
+		  <center>
+			  {{#each share}}
+					{{> shareBrowserItem}}
+			  {{/each}}
+		  </center>
+		  </ul>
+		  <div id="tastemakers" class="tab-pane">
+		    <h4>Friend choices will show up here</h4>
+		      <p> and so on ...</p>
+		  </div>
+		  <div id="globalfeed" class="tab-pane">
+		    <h4>entire global feed will show up here</h4>
+		      <p> and so on ...</p>
+		  </div>
+	  </div>
+  </div>
+  <!--<a class="reviewHiddenVids" href="#">review hidden links</a>
 	{{#if showReviewHiddenLinksDialog}}
 		{{> validateProblematicYTLinks}}
-	{{/if}}
+	{{/if}}-->
 </template>
 
 <template name="shareBrowserItem">
-	<li class="span2">
-		<a href="#" class="thumbnail">
+	<li class="shareBrowserItem">
+		<a href="#" class="thumbnail shareBrowserItem {{selected}}">
 		  <img data-src="holder.js/120x150" src="http://img.youtube.com/vi/{{ytimg sl}}/2.jpg" alt="" />
 		  <center><p>{{sa}} <br> {{st}}</p></center>
 		  {{#if linkIsUnidentifiable _id}}
 			  <a class="btn" href="#"><i class="icon-ok icon-black"></i></a>
 			  <a class="btn" href="#"><i class="icon-remove icon-black"></i></a>
 		  {{/if}}
+		  <p align="right" class="shareSource">via {{postedUsing}}</p>
 		</a>
+	</li>
+</template>
+
+<template name="trackInfo">
+	<li>
+	{{#with share}}
+		<a href="#">Now Playing: {{sa}} {{st}}</a>
+	{{/with}}
 	</li>
 </template>
 
 <template name="chosenShare">
 <center>
+  <!--<object type="application/x-shockwave-flash" id="sharePlayer" data="http://www.youtube.com/v/Kp-is_yTtjU?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" width="640" height="385"><param name="allowScriptAccess" value="always"/></object>-->
   {{#if share}}
 		{{#with share}}
-		  <div>{{sa}} - {{st}}
-		  <br>
-		  <div id="videoDiv" class = "media">
-			<!--NOT WORKING PROPER IFRAME VERSION<iframe id="sharePlayer" type="text/html" width="640" height="360" src="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" frameborder="0" allowfullscreen></iframe>-->
-			<!--WORKING ORIGINAL VERSION<object id="sharePlayer" width="560" height="315"><param name="movie" value="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed id="actualMediaPlayer" src="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" type="application/x-shockwave-flash" width="560" height="315" allowscriptaccess="always" allowfullscreen="true"></embed></object>-->
-			<object type="application/x-shockwave-flash" id="sharePlayer" data="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" width="640" height="385"><param name="allowScriptAccess" value="always"/></object>
-		  </div>
-		  <br>
-		  {{dt}}
-		  <br>
-		  {{msg}}    
+		  <div><!--removed sa st and msg-->
+			  <br>
+			  <div id="videoDiv" class = "media">
+				<!--NOT WORKING PROPER IFRAME VERSION<iframe id="sharePlayer" type="text/html" width="640" height="360" src="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" frameborder="0" allowfullscreen></iframe>-->
+				<!--WORKING ORIGINAL VERSION<object id="sharePlayer" width="560" height="315"><param name="movie" value="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed id="actualMediaPlayer" src="{{embed sl}}?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" type="application/x-shockwave-flash" width="560" height="315" allowscriptaccess="always" allowfullscreen="true"></embed></object>-->
+
+
+
+				<!--LAST ORIGINAL WORKING VERSION / NOW MOVED OUTSIDE CHOSENSHARE template so as to seamlessly switch videos<object type="application/x-shockwave-flash" id="sharePlayer" data="embed sl?version=3&amp;hl=en_US&amp;rel=0&autoplay=1&enablejsapi=1" width="640" height="385"><param name="allowScriptAccess" value="always"/></object>-->
+
+			  </div>
+			  <span id="vidInfo" style="display:none;">{{formatTimestamp dt}}</span>   
 		  </div>
 		{{/with}}
   {{else}}		
-	<h1>NOTHING CHOSEN YET!</h1>
+	<h1>hit NEXT to start grooving! :D</h1>
   {{/if}}
 </center>
 </template>
-
 
 <template name="header">
 	<div class="navbar">
 		<div class="navbar-inner">
 			<a class="brand" href="#">Groovit</a>
-			<div class="container">
+			<ul class="nav">
+				<li class="divider-vertical"></li>
+			</ul>
+			<!--<div class="container">-->
 				<div class="nav">
 					{{> playerControls}}
 				</div>
+				<ul class="nav">
+					<li class="divider-vertical"></li>
+				</ul>
 				<div class="nav pull-right">
 					{{> user_info}}
 				</div>
-			</div>
+			<!--</div>-->
 		</div>
 	</div>
 </template>
 
 <template name="playerControls">
-	<li><a id="playButton" href="javascript:// play video" onclick="playVideo();">Play</a></li>
-	<li><a id="pauseButton" href="javascript:// pause video" onclick="pauseVideo();">Pause</a></li>
-	<li><a id="nextButton" href="javascript:// next video">Next</a></li>
+	<!--<div id="topControls">-->
+		<ul class="nav">
+			<!--<div id="toolbar" class="ui-toolbar ui-widget-header ui-corner-all">-->
+				<!--<a id="previousButton" href="javascript:// previous video">Previous   </a>-->
+				<!-- commented out to try just link controls rather than BUTTONS
+				<button id="previousButton" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-icon-only" role="button" aria-disabled="false" title="Previous"><span class="ui-button-icon-primary ui-icon ui-icon-seek-prev"></span><span class="ui-button-text">Previous</span></button>
+				<button id="playButton" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-icon-only" onclick="playVideo();" role="button" aria-disabled="false" title="Play"><span class="ui-button-icon-primary ui-icon ui-icon-play"></span><span class="ui-button-text">Play</span></button>
+				<button id="pauseButton" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-icon-only" onclick="pauseVideo();" role="button" aria-disabled="false" title="Pause"><span class="ui-button-icon-primary ui-icon ui-icon-pause"></span><span class="ui-button-text">Pause</span></button>
+				<button id="nextButton" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-icon-only" role="button" aria-disabled="false" title="Next"><span class="ui-button-icon-primary ui-icon ui-icon-seek-next"></span><span class="ui-button-text">Next</span></button>-->
+
+				<li id="previousButton" title="Previous" class="vidControls"><a href="#"><i class="icon-step-backward"></i></a></li>
+				<li id="playButton" onclick="playVideo();" title="Play" class="vidControls"><a href="#"><i class="icon-play"></a></i></li>
+				<li id="pauseButton" onclick="pauseVideo();" title="Pause" class="vidControls"><a href="#"><i class="icon-pause"></a></i></li>
+				<li id="nextButton" title="Next"><a href="#"><i class="icon-step-forward" class="vidControls"></a></i></li>
+			<!--</div>-->
+		<li>
+			<a href="#">
+				<div id="progContainer" class="progress progress-info">
+				  <div id="progBar" class="bar" style="width: 0%;"></div>
+				</div>
+			</a>
+		</li>
+	</ul>
+	<!--</div>-->
 </template>
 
 <template name="user_info">
